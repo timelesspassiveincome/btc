@@ -169,7 +169,7 @@ const pdfUrl = 'file/bitcoin.pdf';
 pdfjsLib.GlobalWorkerOptions.workerSrc =
   'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
-let pdfDoc, pageNum = 1, zoomScale = 1, baseScale = 1;
+let pdfDoc, pageNum = 1, zoomScale = 0.8, baseScale = 0.8;
 
 const canvas = document.getElementById('pdf-canvas');
 const ctx = canvas.getContext('2d');

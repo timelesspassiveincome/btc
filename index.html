@@ -18,6 +18,7 @@ body {
   padding-bottom: 3.5rem;
   background: #f1f3f5;
   overflow: hidden;
+  overscroll-behavior: none;
 }
 
 .pdf-wrapper {
@@ -28,18 +29,14 @@ body {
   padding: .25rem;
   border-radius: 12px;
   overflow: hidden;
-  width: 100%;
-  height: calc(var(--vh) * 100 - 7rem);
 }
 
 #pdf-canvas {
   background: #fff;
   border-radius: 8px;
   box-shadow: 0 12px 30px rgba(0,0,0,.15);
-  max-width: 100%;
-  max-height: 100%;
-  height: auto;
   touch-action: none;
+  transform-origin: center center;
 }
 
 /* ===== Bottom Nav ===== */
@@ -86,39 +83,46 @@ body {
   z-index: 1100;
 }
 
-/* ===== Fullscreen Layout ===== */
-:fullscreen body {
-  padding: 0;
-  background: #000;
+/* ===== Landscape Mobile ===== */
+@media (orientation: landscape) and (max-width: 991px) {
+  body {
+    padding: 0;
+    background: #000;
+  }
+
+  nav.navbar {
+    display: none;
+  }
+
+  main.container {
+    max-width: 100%;
+    padding: 0;
+    margin: 0;
+  }
+
+  .pdf-wrapper {
+    height: calc(var(--vh) * 100);
+    border-radius: 0;
+    background: #000;
+  }
+
+  #pdf-canvas {
+    border-radius: 0;
+    box-shadow: none;
+  }
 }
 
-:fullscreen main.container {
-  max-width: 100%;
-  padding: 0;
-  margin: 0;
-}
-
-:fullscreen .pdf-wrapper {
-  width: 100vw;
-  height: 100dvh;
-  background: #000;
-  border-radius: 0;
-}
-
-:fullscreen #pdf-canvas {
-  border-radius: 0;
-  box-shadow: none;
-}
-
-/* ===== Bottom Nav in Fullscreen ===== */
+/* ===== Force Nav Visible in Fullscreen ===== */
 :fullscreen .bottom-nav {
+  display: flex !important;
+  bottom: 1rem;
   background: rgba(0,0,0,.55);
 }
 
 :fullscreen .bottom-nav button,
 :fullscreen #page-info {
   color: #fff;
-  opacity: .9;
+  opacity: .85;
 }
 </style>
 </head>
@@ -176,20 +180,7 @@ const viewer = document.getElementById('viewer');
 function renderPage(num) {
   pdfDoc.getPage(num).then(page => {
     const unscaled = page.getViewport({ scale: 1 });
-
-    const maxW = viewer.clientWidth;
-
-    const uiOffset = 120; // navbar + bottom nav
-    const maxH = window.visualViewport
-      ? window.visualViewport.height - uiOffset
-      : viewer.clientHeight;
-
-    const scale = Math.min(
-      maxW / unscaled.width,
-      maxH / unscaled.height
-    );
-
-    baseScale = scale;
+    baseScale = viewer.clientWidth / unscaled.width;
 
     const viewport = page.getViewport({
       scale: baseScale * zoomScale
@@ -210,14 +201,13 @@ pdfjsLib.getDocument(pdfUrl).promise.then(pdf => {
   renderPage(pageNum);
 });
 
-/* ===== Navigation ===== */
+/* ===== Navigation Buttons ===== */
 prev.onclick = () => {
   if (pageNum > 1) {
     zoomScale = 1;
     renderPage(--pageNum);
   }
 };
-
 next.onclick = () => {
   if (pageNum < pdfDoc.numPages) {
     zoomScale = 1;
@@ -225,29 +215,88 @@ next.onclick = () => {
   }
 };
 
-/* ===== Fullscreen Toggle ===== */
+/* ===== Pinch Zoom ===== */
+let startDist = 0, tempScale = 1, isPinching = false;
+
+const getDist = e => Math.hypot(
+  e.touches[0].clientX - e.touches[1].clientX,
+  e.touches[0].clientY - e.touches[1].clientY
+);
+
+canvas.addEventListener('touchstart', e => {
+  if (e.touches.length === 2) {
+    isPinching = true;
+    startDist = getDist(e);
+  }
+});
+
+canvas.addEventListener('touchmove', e => {
+  if (e.touches.length === 2) {
+    e.preventDefault();
+    tempScale = zoomScale * (getDist(e) / startDist);
+    tempScale = Math.min(Math.max(tempScale, 1), 3);
+    canvas.style.transform = `scale(${tempScale})`;
+  }
+}, { passive: false });
+
+canvas.addEventListener('touchend', () => {
+  if (isPinching) {
+    zoomScale = tempScale;
+    canvas.style.transform = 'none';
+    isPinching = false;
+    renderPage(pageNum);
+  }
+});
+
+/* ===== Swipe Change Page ===== */
+let touchStartX = 0;
+let touchEndX = 0;
+
+canvas.addEventListener('touchstart', e => {
+  if (e.touches.length === 1 && zoomScale === 1) {
+    touchStartX = e.touches[0].clientX;
+  }
+});
+
+canvas.addEventListener('touchend', e => {
+  if (zoomScale !== 1) return;
+
+  touchEndX = e.changedTouches[0].clientX;
+  const deltaX = touchEndX - touchStartX;
+
+  if (Math.abs(deltaX) > 80) {
+    if (deltaX < 0 && pageNum < pdfDoc.numPages) {
+      zoomScale = 1;
+      renderPage(++pageNum);
+    } else if (deltaX > 0 && pageNum > 1) {
+      zoomScale = 1;
+      renderPage(--pageNum);
+    }
+  }
+});
+
+/* ===== Fullscreen + Orientation ===== */
 const fsBtn = document.getElementById('fsBtn');
-const fsIcon = fsBtn.querySelector('i');
 
 fsBtn.onclick = async () => {
   if (!document.fullscreenElement) {
     await viewer.requestFullscreen();
-    try { await screen.orientation.lock('landscape'); } catch {}
+    if (screen.orientation?.lock) {
+      try { await screen.orientation.lock('landscape'); } catch {}
+    }
   } else {
-    await document.exitFullscreen();
+    document.exitFullscreen();
   }
 };
 
 document.addEventListener('fullscreenchange', () => {
-  const isFs = !!document.fullscreenElement;
-
-  fsIcon.className = isFs
-    ? 'bi bi-fullscreen-exit'
-    : 'bi bi-arrows-fullscreen';
-
-  if (!isFs && screen.orientation?.unlock) {
+  if (!document.fullscreenElement && screen.orientation?.unlock) {
     screen.orientation.unlock();
   }
+
+  fsBtn.innerHTML = document.fullscreenElement
+    ? '<i class="bi bi-fullscreen-exit"></i>'
+    : '<i class="bi bi-arrows-fullscreen"></i>';
 
   setTimeout(() => renderPage(pageNum), 300);
 });

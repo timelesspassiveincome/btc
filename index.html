@@ -9,12 +9,18 @@
 <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
 
 <style>
+:root {
+  --vh: 1vh;
+}
+
 /* ===== Base ===== */
 body {
+  margin: 0;
   padding-top: 3.5rem;
   padding-bottom: 3.5rem;
   background: #f1f3f5;
   overflow: hidden;
+  overscroll-behavior: none;
 }
 
 .pdf-wrapper {
@@ -31,10 +37,11 @@ body {
   background: #fff;
   border-radius: 8px;
   box-shadow: 0 12px 30px rgba(0,0,0,.15);
-  touch-action: none; /* สำคัญสำหรับ pinch zoom */
+  touch-action: none;
+  transform-origin: center center;
 }
 
-/* ===== Bottom Navigation (Minimal) ===== */
+/* ===== Bottom Navigation ===== */
 .bottom-nav {
   position: fixed;
   bottom: .5rem;
@@ -52,11 +59,7 @@ body {
   border: none;
   background: transparent;
   font-size: 1.2rem;
-  opacity: .5;
-}
-
-.bottom-nav button:hover {
-  opacity: 1;
+  opacity: .6;
 }
 
 #page-info {
@@ -64,26 +67,14 @@ body {
   opacity: .6;
 }
 
-/* ===== Portrait ===== */
-@media (orientation: portrait) {
-  main.container {
-    padding-left: .25rem;
-    padding-right: .25rem;
-  }
-}
-
-/* ===== Landscape (Mobile / Tablet only) ===== */
+/* ===== Landscape Mobile Fullscreen ===== */
 @media (orientation: landscape) and (max-width: 991px) {
   body {
     padding: 0;
-    margin: 0;
     background: #000;
   }
 
-  nav.navbar {
-    display: none;
-  }
-
+  nav.navbar,
   .bottom-nav {
     display: none;
   }
@@ -95,7 +86,7 @@ body {
   }
 
   .pdf-wrapper {
-    height: 100vh;
+    height: calc(var(--vh) * 100);
     border-radius: 0;
     background: #000;
   }
@@ -110,7 +101,6 @@ body {
 
 <body>
 
-<!-- Top Navbar (Desktop แสดงเสมอ) -->
 <nav class="navbar navbar-dark fixed-top bg-dark">
   <div class="container-fluid">
     <span class="navbar-brand">PDF Slides</span>
@@ -123,7 +113,6 @@ body {
   </div>
 </main>
 
-<!-- Bottom Navigation -->
 <div class="bottom-nav d-flex align-items-center gap-3">
   <button id="prev"><i class="bi bi-chevron-left"></i></button>
   <span id="page-info"></span>
@@ -133,6 +122,21 @@ body {
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 
 <script>
+/* ===== Fix Mobile VH ===== */
+function setVH() {
+  document.documentElement.style.setProperty(
+    '--vh',
+    `${window.visualViewport.height * 0.01}px`
+  );
+}
+window.visualViewport.addEventListener('resize', setVH);
+setVH();
+
+window.addEventListener('orientationchange', () => {
+  setTimeout(() => window.scrollTo(0, 1), 300);
+});
+
+/* ===== PDF Setup ===== */
 const pdfUrl = 'file/bitcoin.pdf';
 pdfjsLib.GlobalWorkerOptions.workerSrc =
   'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
@@ -146,20 +150,23 @@ const canvas = document.getElementById('pdf-canvas');
 const ctx = canvas.getContext('2d');
 const pageInfo = document.getElementById('page-info');
 
+/* ===== Render Page ===== */
 function renderPage(num) {
   pdfDoc.getPage(num).then(page => {
 
-    const isMobileLandscape =
+    const isLandscapeMobile =
       window.matchMedia("(orientation: landscape)").matches &&
       window.innerWidth <= 991;
 
     const unscaled = page.getViewport({ scale: 1 });
 
-    baseScale = isMobileLandscape
+    baseScale = isLandscapeMobile
       ? window.innerHeight / unscaled.height
       : canvas.parentElement.clientWidth / unscaled.width;
 
-    const viewport = page.getViewport({ scale: baseScale * zoomScale });
+    const viewport = page.getViewport({
+      scale: baseScale * zoomScale
+    });
 
     canvas.width = viewport.width;
     canvas.height = viewport.height;
@@ -176,49 +183,67 @@ pdfjsLib.getDocument(pdfUrl).promise.then(pdf => {
   renderPage(pageNum);
 });
 
-document.getElementById('prev').onclick = () => {
+/* ===== Navigation ===== */
+prev.onclick = () => {
   if (pageNum > 1) {
     zoomScale = 1;
     renderPage(--pageNum);
   }
 };
 
-document.getElementById('next').onclick = () => {
+next.onclick = () => {
   if (pageNum < pdfDoc.numPages) {
     zoomScale = 1;
     renderPage(++pageNum);
   }
 };
 
-/* ===== Pinch Zoom (Mobile) ===== */
+/* ===== Smooth Pinch Zoom ===== */
 let startDist = 0;
+let tempScale = 1;
+let isPinching = false;
+
+function getDist(e) {
+  return Math.hypot(
+    e.touches[0].clientX - e.touches[1].clientX,
+    e.touches[0].clientY - e.touches[1].clientY
+  );
+}
 
 canvas.addEventListener('touchstart', e => {
   if (e.touches.length === 2) {
-    startDist = Math.hypot(
-      e.touches[0].clientX - e.touches[1].clientX,
-      e.touches[0].clientY - e.touches[1].clientY
-    );
+    isPinching = true;
+    startDist = getDist(e);
   }
 });
 
 canvas.addEventListener('touchmove', e => {
   if (e.touches.length === 2) {
     e.preventDefault();
-    const newDist = Math.hypot(
-      e.touches[0].clientX - e.touches[1].clientX,
-      e.touches[0].clientY - e.touches[1].clientY
-    );
-    zoomScale *= newDist / startDist;
-    zoomScale = Math.min(Math.max(zoomScale, 1), 3);
-    startDist = newDist;
-    renderPage(pageNum);
+    const newDist = getDist(e);
+    tempScale = zoomScale * (newDist / startDist);
+    tempScale = Math.min(Math.max(tempScale, 1), 3);
+    canvas.style.transform = `scale(${tempScale})`;
   }
 }, { passive: false });
 
+canvas.addEventListener('touchend', () => {
+  if (isPinching) {
+    zoomScale = tempScale;
+    canvas.style.transform = 'none';
+    isPinching = false;
+    renderPage(pageNum);
+  }
+});
+
+/* ===== Resize ===== */
+let resizeTimer;
 window.addEventListener('resize', () => {
-  zoomScale = 1;
-  renderPage(pageNum);
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => {
+    zoomScale = 1;
+    renderPage(pageNum);
+  }, 200);
 });
 </script>
 

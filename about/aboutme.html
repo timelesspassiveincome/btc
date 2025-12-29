@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+  <meta charset="UTF-8">
+  <title>เกี่ยวกับฉัน & สนับสนุน</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <!-- Bootstrap 5 -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+
+  <style>
+    body {
+      background-color: #f8f9fa;
+      color: #212529;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      line-height: 1.8;
+    }
+
+    .container {
+      max-width: 880px;
+    }
+
+    .card {
+      border: none;
+      border-radius: 14px;
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06);
+    }
+
+    h1,
+    h2 {
+      font-weight: 600;
+    }
+
+    .donate-box {
+      text-align: center;
+    }
+
+    .qr-img {
+      width: 220px;
+      height: 220px;
+      object-fit: contain;
+      border-radius: 12px;
+      background: #fff;
+      padding: 10px;
+      cursor: pointer;
+      transition: transform 0.15s ease;
+    }
+
+    .qr-img:active {
+      transform: scale(0.97);
+    }
+
+    .address-box {
+      background: #f1f3f5;
+      border-radius: 10px;
+      padding: 1rem;
+      font-family: monospace;
+      font-size: 0.9rem;
+      word-break: break-all;
+      cursor: pointer;
+      margin-top: 1rem;
+    }
+
+    .hint {
+      font-size: 0.85rem;
+      color: #6c757d;
+      margin-top: 0.5rem;
+    }
+
+    .copied {
+      font-size: 0.85rem;
+      color: #198754;
+      margin-top: 0.5rem;
+      opacity: 0;
+      transition: opacity 0.4s ease;
+    }
+
+    .copied.show {
+      opacity: 1;
+    }
+
+    footer {
+      color: #6c757d;
+      font-size: 0.95rem;
+    }
+  </style>
+</head>
+
+<body>
+
+  <nav class="navbar navbar-expand-md navbar-dark fixed-top bg-dark">
+    <div class="container-fluid">
+      <a class="navbar-brand" href="#">BTC: Bitcoin</a>
+      <button class="navbar-toggler collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse"
+        aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="navbar-collapse collapse" id="navbarCollapse" style="">
+        <ul class="navbar-nav me-auto mb-2 mb-md-0">
+          <li class="nav-item">
+            <a class="nav-link active" aria-current="page" href="/index.html">หน้าแรก</a>
+          </li>
+          <li class="nav-item"><a class="nav-link" href="/article/content.html">บทความ</a></li>
+          <li class="nav-item"><a class="nav-link" href="https://bitcoin.org/files/bitcoin-paper/bitcoin_th.pdf">สมุดปกขาว</a></li>
+                     <li class="nav-item"><a class="nav-link" href="https://mempool.space/">สถานะบิทคอยน์</a></li>
+          <li class="nav-item"><a class="nav-link" href="/about/aboutme.html">เกี่ยวกับฉัน</a></li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container py-5 mt-5">
+
+    <!-- About -->
+    <div class="card p-4 mb-5">
+      <h1 class="mb-3">เกี่ยวกับฉัน</h1>
+      <p>
+        เนื้อหาบทความในเว็บไซต์นี้
+        อ้างอิงและเรียบเรียงจากแหล่งข้อมูลสาธารณะเพื่อการศึกษา โดยมีแหล่งหลักจาก
+        <a href="https://learnmeabitcoin.com">https://learnmeabitcoin.com</a>
+      </p>
+      <p>
+        ผู้เขียนได้นำเนื้อหาดังกล่าวมาศึกษา สรุปความ ตีความใหม่
+        และปรับปรุงรูปแบบการนำเสนอให้เข้าใจง่ายยิ่งขึ้น
+        โดยใช้เครื่องมือช่วยสรุปและเรียบเรียงจาก
+        <a href="https://notebooklm.google.com">https://notebooklm.google.com</a>
+
+      </p>
+      <p>
+        เว็บไซต์นี้ ไม่ได้อ้างสิทธิ์ความเป็นเจ้าของเนื้อหาต้นฉบับ
+        และไม่มีเจตนาในการละเมิดลิขสิทธิ์
+        หากมีส่วนใดที่ไม่เหมาะสม หรือเจ้าของเนื้อหาต้องการให้ปรับแก้หรือนำออก
+        สามารถติดต่อเพื่อแจ้งได้ และจะดำเนินการแก้ไขโดยเร็วที่สุด
+
+
+      </p>
+      <p>
+        หากเนื้อหาเหล่านี้มีประโยชน์สำหรับคุณ
+        การสนับสนุนผ่านการโดเนตถือเป็นกำลังใจในการเรียบเรียงและจัดทำเนื้อหา
+        ไม่ใช่การจำหน่ายหรืออ้างสิทธิ์ในผลงานต้นฉบับ 🙏
+      </p>
+    </div>
+
+    <!-- Donate -->
+    <div class="card p-4 mb-5">
+      <h2 class="mb-4">สนับสนุน / Donate </h2>
+
+      <div class="row g-4">
+        <!-- BTC -->
+        <div class="col-md-6 donate-box">
+          <h5 class="mb-3">Bitcoin (On-chain)</h5>
+
+          <img src="/images/btc.jpg" class="qr-img" onclick="copyText(btcAddress, 'btcCopied')" alt="Bitcoin QR">
+
+          <div class="address-box" onclick="copyText(btcAddress, 'btcCopied')">
+            bc1qqat85z903z5s206pdydpf7f0d6ya4ls0qmqpdq
+          </div>
+          <div id="btcCopied" class="copied">คัดลอกแล้ว ✓</div>
+        </div>
+
+        <!-- LN -->
+        <div class="col-md-6 donate-box">
+          <h5 class="mb-3">Lightning Network</h5>
+
+          <img src="/images/ln.jpg" class="qr-img" onclick="copyText(lnAddress, 'lnCopied')" alt="Lightning QR">
+
+          <div class="address-box" onclick="copyText(lnAddress, 'lnCopied')">
+            lnurl1dp68gurn8ghj7ampd3kx2ar0veekzar0wd5xjtnrdakj7tnhv4kxctttdehhwm30d3h82unvwqhkw6tyv3ukyun9v9jr2vgrg2tq0
+          </div>
+          <div id="lnCopied" class="copied">คัดลอกแล้ว ✓</div>
+        </div>
+      </div>
+      <div class="hint text-center">แตะ qr-code หรือ address เพื่อคัดลอก</div>
+    </div>
+
+    <!-- Thank you -->
+    <footer class="text-center mt-5">
+      <p class="mb-1">ขอบคุณสำหรับการสนับสนุน 🙏</p>
+      <p>ทุกแรงสนับสนุนช่วยให้ผมสามารถสร้างเนื้อหาต่อไปได้</p>
+    </footer>
+
+  </div>
+
+  <script>
+    const btcAddress =
+      "bc1qqat85z903z5s206pdydpf7f0d6ya4ls0qmqpdq";
+
+    const lnAddress =
+      "lnurl1dp68gurn8ghj7ampd3kx2ar0veekzar0wd5xjtnrdakj7tnhv4kxctttdehhwm30d3h82unvwqhkw6tyv3ukyun9v9jr2vgrg2tq0";
+
+    function copyText(text, elementId) {
+      navigator.clipboard.writeText(text).then(() => {
+        const el = document.getElementById(elementId);
+        el.classList.add("show");
+
+        setTimeout(() => {
+          el.classList.remove("show");
+        }, 2000);
+      });
+    }
+  </script>
+
+</body>
+
+</html>

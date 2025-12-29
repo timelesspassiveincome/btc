@@ -9,9 +9,7 @@
 <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
 
 <style>
-:root {
-  --vh: 1vh;
-}
+:root { --vh: 1vh; }
 
 /* ===== Base ===== */
 body {
@@ -44,7 +42,7 @@ body {
 /* ===== Bottom Navigation ===== */
 .bottom-nav {
   position: fixed;
-  bottom: .5rem;
+  bottom: .75rem;
   left: 50%;
   transform: translateX(-50%);
   background: rgba(255,255,255,.6);
@@ -65,6 +63,24 @@ body {
 #page-info {
   font-size: .85rem;
   opacity: .6;
+}
+
+/* ===== Fullscreen Button (YouTube style) ===== */
+.fullscreen-btn {
+  position: fixed;
+  right: .75rem;
+  bottom: .75rem;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0,0,0,.6);
+  color: #fff;
+  font-size: 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1100;
 }
 
 /* ===== Landscape Mobile Fullscreen ===== */
@@ -108,7 +124,7 @@ body {
 </nav>
 
 <main class="container mt-2">
-  <div class="pdf-wrapper">
+  <div class="pdf-wrapper" id="viewer">
     <canvas id="pdf-canvas"></canvas>
   </div>
 </main>
@@ -118,6 +134,11 @@ body {
   <span id="page-info"></span>
   <button id="next"><i class="bi bi-chevron-right"></i></button>
 </div>
+
+<!-- Fullscreen Button -->
+<button class="fullscreen-btn" id="fsBtn">
+  <i class="bi bi-arrows-fullscreen"></i>
+</button>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 
@@ -132,10 +153,6 @@ function setVH() {
 window.visualViewport.addEventListener('resize', setVH);
 setVH();
 
-window.addEventListener('orientationchange', () => {
-  setTimeout(() => window.scrollTo(0, 1), 300);
-});
-
 /* ===== PDF Setup ===== */
 const pdfUrl = 'file/bitcoin.pdf';
 pdfjsLib.GlobalWorkerOptions.workerSrc =
@@ -149,28 +166,17 @@ let zoomScale = 1;
 const canvas = document.getElementById('pdf-canvas');
 const ctx = canvas.getContext('2d');
 const pageInfo = document.getElementById('page-info');
+const viewer = document.getElementById('viewer');
 
-/* ===== Render Page ===== */
+/* ===== Render ===== */
 function renderPage(num) {
   pdfDoc.getPage(num).then(page => {
-
-    const isLandscapeMobile =
-      window.matchMedia("(orientation: landscape)").matches &&
-      window.innerWidth <= 991;
-
     const unscaled = page.getViewport({ scale: 1 });
-
-    baseScale = isLandscapeMobile
-      ? window.innerHeight / unscaled.height
-      : canvas.parentElement.clientWidth / unscaled.width;
-
-    const viewport = page.getViewport({
-      scale: baseScale * zoomScale
-    });
+    baseScale = viewer.clientWidth / unscaled.width;
+    const viewport = page.getViewport({ scale: baseScale * zoomScale });
 
     canvas.width = viewport.width;
     canvas.height = viewport.height;
-
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     page.render({ canvasContext: ctx, viewport });
 
@@ -183,14 +189,13 @@ pdfjsLib.getDocument(pdfUrl).promise.then(pdf => {
   renderPage(pageNum);
 });
 
-/* ===== Navigation ===== */
+/* ===== Nav ===== */
 prev.onclick = () => {
   if (pageNum > 1) {
     zoomScale = 1;
     renderPage(--pageNum);
   }
 };
-
 next.onclick = () => {
   if (pageNum < pdfDoc.numPages) {
     zoomScale = 1;
@@ -198,17 +203,12 @@ next.onclick = () => {
   }
 };
 
-/* ===== Smooth Pinch Zoom ===== */
-let startDist = 0;
-let tempScale = 1;
-let isPinching = false;
-
-function getDist(e) {
-  return Math.hypot(
-    e.touches[0].clientX - e.touches[1].clientX,
-    e.touches[0].clientY - e.touches[1].clientY
-  );
-}
+/* ===== Pinch Zoom ===== */
+let startDist = 0, tempScale = 1, isPinching = false;
+const getDist = e => Math.hypot(
+  e.touches[0].clientX - e.touches[1].clientX,
+  e.touches[0].clientY - e.touches[1].clientY
+);
 
 canvas.addEventListener('touchstart', e => {
   if (e.touches.length === 2) {
@@ -220,8 +220,7 @@ canvas.addEventListener('touchstart', e => {
 canvas.addEventListener('touchmove', e => {
   if (e.touches.length === 2) {
     e.preventDefault();
-    const newDist = getDist(e);
-    tempScale = zoomScale * (newDist / startDist);
+    tempScale = zoomScale * (getDist(e) / startDist);
     tempScale = Math.min(Math.max(tempScale, 1), 3);
     canvas.style.transform = `scale(${tempScale})`;
   }
@@ -236,14 +235,23 @@ canvas.addEventListener('touchend', () => {
   }
 });
 
-/* ===== Resize ===== */
-let resizeTimer;
-window.addEventListener('resize', () => {
-  clearTimeout(resizeTimer);
-  resizeTimer = setTimeout(() => {
-    zoomScale = 1;
-    renderPage(pageNum);
-  }, 200);
+/* ===== Fullscreen API ===== */
+const fsBtn = document.getElementById('fsBtn');
+
+fsBtn.onclick = () => {
+  if (!document.fullscreenElement) {
+    viewer.requestFullscreen();
+  } else {
+    document.exitFullscreen();
+  }
+};
+
+document.addEventListener('fullscreenchange', () => {
+  fsBtn.innerHTML = document.fullscreenElement
+    ? '<i class="bi bi-fullscreen-exit"></i>'
+    : '<i class="bi bi-arrows-fullscreen"></i>';
+
+  setTimeout(() => renderPage(pageNum), 300);
 });
 </script>
 

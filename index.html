@@ -11,130 +11,107 @@
 <style>
 :root { --vh: 1vh; }
 
-/* ===== Base ===== */
 body {
   margin: 0;
-  padding-top: 3.5rem;
-  padding-bottom: 3.5rem;
-  background: #f1f3f5;
+  background: #000;
   overflow: hidden;
   overscroll-behavior: none;
 }
 
+nav.navbar {
+  z-index: 2000;
+}
+
+main {
+  width: 100%;
+  height: calc(var(--vh) * 100);
+}
+
 .pdf-wrapper {
+  width: 100%;
+  height: 100%;
   display: flex;
-  justify-content: center;
   align-items: center;
-  background: #f8f9fa;
-  padding: .25rem;
-  border-radius: 12px;
-  overflow: hidden;
+  justify-content: center;
+  background: #000;
 }
 
 #pdf-canvas {
-  background: #fff;
-  border-radius: 8px;
-  box-shadow: 0 12px 30px rgba(0,0,0,.15);
+  max-width: 100%;
+  max-height: 100%;
   touch-action: none;
   transform-origin: center center;
 }
 
-/* ===== Bottom Nav ===== */
 .bottom-nav {
   position: fixed;
-  bottom: .75rem;
+  bottom: 1rem;
   left: 50%;
   transform: translateX(-50%);
-  background: rgba(255,255,255,.6);
+  background: rgba(0,0,0,.55);
   backdrop-filter: blur(8px);
   border-radius: 999px;
-  padding: .3rem .6rem;
-  box-shadow: 0 4px 12px rgba(0,0,0,.15);
-  z-index: 1050;
-  transition: opacity .25s ease;
+  padding: .4rem .8rem;
+  display: flex;
+  gap: .75rem;
+  align-items: center;
+  z-index: 1500;
 }
-
-.bottom-nav.hidden { opacity: 0; pointer-events: none; }
 
 .bottom-nav button {
   border: none;
   background: transparent;
-  font-size: 1.2rem;
-  opacity: .6;
+  color: #fff;
+  font-size: 1.3rem;
 }
 
 #page-info {
+  color: #fff;
   font-size: .85rem;
-  opacity: .6;
+  opacity: .8;
 }
 
-/* ===== Fullscreen Button ===== */
 .fullscreen-btn,
 .exit-fs-btn {
   position: fixed;
-  right: .75rem;
+  right: 1rem;
   width: 44px;
   height: 44px;
   border-radius: 50%;
   border: none;
   background: rgba(0,0,0,.6);
   color: #fff;
-  font-size: 1.25rem;
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1100;
-  transition: opacity .25s ease;
+  z-index: 1600;
 }
 
-.fullscreen-btn { bottom: .75rem; }
-.exit-fs-btn { top: .75rem; display: none; }
+.fullscreen-btn { bottom: 1rem; }
+.exit-fs-btn { top: 1rem; display: none; }
 
-.hidden-ui {
-  opacity: 0 !important;
-  pointer-events: none !important;
-}
-
-/* ===== Landscape Mobile ===== */
-@media (orientation: landscape) and (max-width: 991px) {
-  body { padding: 0; background: #000; }
-  nav.navbar { display: none; }
-  main.container { max-width: 100%; padding: 0; margin: 0; }
-  .pdf-wrapper {
-    height: calc(var(--vh) * 100);
-    border-radius: 0;
-    background: #000;
-  }
-  #pdf-canvas { border-radius: 0; box-shadow: none; }
-}
-
-/* ===== Fullscreen ===== */
-:fullscreen .bottom-nav {
-  background: rgba(0,0,0,.55);
-}
-:fullscreen .bottom-nav button,
-:fullscreen #page-info {
-  color: #fff;
-  opacity: .9;
+.hidden {
+  opacity: 0;
+  pointer-events: none;
 }
 </style>
 </head>
 
 <body>
 
-<nav class="navbar navbar-dark fixed-top bg-dark">
+<nav class="navbar navbar-dark bg-dark">
   <div class="container-fluid">
     <span class="navbar-brand">PDF Slides</span>
   </div>
 </nav>
 
-<main class="container mt-2">
+<main>
   <div class="pdf-wrapper" id="viewer">
     <canvas id="pdf-canvas"></canvas>
   </div>
 </main>
 
-<div class="bottom-nav d-flex align-items-center gap-3" id="bottomNav">
+<div class="bottom-nav" id="bottomNav">
   <button id="prev"><i class="bi bi-chevron-left"></i></button>
   <span id="page-info"></span>
   <button id="next"><i class="bi bi-chevron-right"></i></button>
@@ -151,7 +128,7 @@ body {
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 
 <script>
-/* ===== Fix VH ===== */
+/* ===== Viewport Height Fix ===== */
 function setVH() {
   document.documentElement.style.setProperty('--vh', `${window.innerHeight * 0.01}px`);
 }
@@ -163,33 +140,39 @@ const pdfUrl = 'file/bitcoin.pdf';
 pdfjsLib.GlobalWorkerOptions.workerSrc =
   'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
-let pdfDoc, pageNum = 1, zoomScale = 1, baseScale = 1;
-let renderLock = false;
+let pdfDoc, pageNum = 1;
+let zoomScale = 1;
+let fitScale = 1;
 
 const canvas = document.getElementById('pdf-canvas');
 const ctx = canvas.getContext('2d');
-const pageInfo = document.getElementById('page-info');
 const viewer = document.getElementById('viewer');
+const pageInfo = document.getElementById('page-info');
 
-/* ===== Render (Debounced) ===== */
-function renderPage(num) {
-  if (renderLock) return;
-  renderLock = true;
+/* ===== Fit To Screen ===== */
+function calcFitScale(page) {
+  const vp = page.getViewport({ scale: 1 });
+  const scaleX = viewer.clientWidth / vp.width;
+  const scaleY = viewer.clientHeight / vp.height;
+  return Math.min(scaleX, scaleY);
+}
 
-  pdfDoc.getPage(num).then(page => {
-    const unscaled = page.getViewport({ scale: 1 });
-    baseScale = viewer.clientWidth / unscaled.width;
+/* ===== Render ===== */
+async function renderPage(num) {
+  const page = await pdfDoc.getPage(num);
+  fitScale = calcFitScale(page);
 
-    const viewport = page.getViewport({ scale: baseScale * zoomScale });
-    canvas.width = viewport.width;
-    canvas.height = viewport.height;
-
-    ctx.clearRect(0,0,canvas.width,canvas.height);
-    page.render({ canvasContext: ctx, viewport });
-
-    pageInfo.textContent = `${num} / ${pdfDoc.numPages}`;
-    setTimeout(() => renderLock = false, 80);
+  const viewport = page.getViewport({
+    scale: fitScale * zoomScale
   });
+
+  canvas.width = viewport.width;
+  canvas.height = viewport.height;
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  page.render({ canvasContext: ctx, viewport });
+
+  pageInfo.textContent = `${num} / ${pdfDoc.numPages}`;
 }
 
 pdfjsLib.getDocument(pdfUrl).promise.then(pdf => {
@@ -198,8 +181,19 @@ pdfjsLib.getDocument(pdfUrl).promise.then(pdf => {
 });
 
 /* ===== Navigation ===== */
-prev.onclick = () => pageNum > 1 && renderPage(--pageNum);
-next.onclick = () => pageNum < pdfDoc.numPages && renderPage(++pageNum);
+prev.onclick = () => {
+  if (pageNum > 1) {
+    zoomScale = 1;
+    renderPage(--pageNum);
+  }
+};
+
+next.onclick = () => {
+  if (pageNum < pdfDoc.numPages) {
+    zoomScale = 1;
+    renderPage(++pageNum);
+  }
+};
 
 /* ===== Pinch Zoom ===== */
 let startDist = 0, tempScale = 1, isPinching = false;
@@ -217,11 +211,11 @@ canvas.addEventListener('touchstart', e => {
 });
 
 canvas.addEventListener('touchmove', e => {
-  if (isPinching) {
-    e.preventDefault();
-    tempScale = Math.min(Math.max(zoomScale * (dist(e)/startDist),1),3);
-    canvas.style.transform = `scale(${tempScale})`;
-  }
+  if (!isPinching) return;
+  e.preventDefault();
+  tempScale = zoomScale * (dist(e) / startDist);
+  tempScale = Math.min(Math.max(tempScale, 1), 3);
+  canvas.style.transform = `scale(${tempScale})`;
 },{passive:false});
 
 canvas.addEventListener('touchend', () => {
@@ -233,9 +227,9 @@ canvas.addEventListener('touchend', () => {
   }
 });
 
-/* ===== Double Tap Reset Zoom ===== */
+/* ===== Double Tap Reset ===== */
 let lastTap = 0;
-canvas.addEventListener('touchend', e => {
+canvas.addEventListener('touchend', () => {
   const now = Date.now();
   if (now - lastTap < 300) {
     zoomScale = 1;
@@ -244,15 +238,18 @@ canvas.addEventListener('touchend', e => {
   lastTap = now;
 });
 
-/* ===== Swipe Page (only when not zoomed) ===== */
+/* ===== Swipe Page ===== */
 let sx = 0;
 canvas.addEventListener('touchstart', e => {
-  if (e.touches.length === 1 && zoomScale === 1) sx = e.touches[0].clientX;
+  if (e.touches.length === 1 && zoomScale === 1)
+    sx = e.touches[0].clientX;
 });
+
 canvas.addEventListener('touchend', e => {
   if (zoomScale !== 1) return;
   const dx = e.changedTouches[0].clientX - sx;
-  if (Math.abs(dx) > 80) dx < 0 ? next.click() : prev.click();
+  if (Math.abs(dx) > 80)
+    dx < 0 ? next.click() : prev.click();
 });
 
 /* ===== Fullscreen ===== */
@@ -275,19 +272,23 @@ document.addEventListener('fullscreenchange', () => {
   fsBtn.innerHTML = isFs
     ? '<i class="bi bi-fullscreen-exit"></i>'
     : '<i class="bi bi-arrows-fullscreen"></i>';
-  if (!isFs && screen.orientation?.unlock) screen.orientation.unlock();
-  setTimeout(()=>renderPage(pageNum),300);
+
+  if (!isFs && screen.orientation?.unlock)
+    screen.orientation.unlock();
+
+  setTimeout(() => renderPage(pageNum), 200);
 });
 
-/* ===== Tap to Toggle UI ===== */
+/* ===== Tap Toggle UI ===== */
 viewer.addEventListener('click', () => {
   bottomNav.classList.toggle('hidden');
-  fsBtn.classList.toggle('hidden-ui');
+  fsBtn.classList.toggle('hidden');
 });
 
 /* ===== Auto Exit Fullscreen on Portrait ===== */
 window.addEventListener('orientationchange', () => {
-  if (screen.orientation?.type.startsWith('portrait') && document.fullscreenElement) {
+  if (screen.orientation?.type.startsWith('portrait') &&
+      document.fullscreenElement) {
     document.exitFullscreen();
   }
 });

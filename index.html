@@ -39,7 +39,7 @@ body {
   transform-origin: center center;
 }
 
-/* ===== Bottom Navigation ===== */
+/* ===== Bottom Nav ===== */
 .bottom-nav {
   position: fixed;
   bottom: .75rem;
@@ -65,7 +65,7 @@ body {
   opacity: .6;
 }
 
-/* ===== Fullscreen Button (YouTube style) ===== */
+/* ===== Fullscreen Button ===== */
 .fullscreen-btn {
   position: fixed;
   right: .75rem;
@@ -83,15 +83,14 @@ body {
   z-index: 1100;
 }
 
-/* ===== Landscape Mobile Fullscreen ===== */
+/* ===== Landscape Mobile ===== */
 @media (orientation: landscape) and (max-width: 991px) {
   body {
     padding: 0;
     background: #000;
   }
 
-  nav.navbar,
-  .bottom-nav {
+  nav.navbar {
     display: none;
   }
 
@@ -111,6 +110,19 @@ body {
     border-radius: 0;
     box-shadow: none;
   }
+}
+
+/* ===== Force Nav Visible in Fullscreen ===== */
+:fullscreen .bottom-nav {
+  display: flex !important;
+  bottom: 1rem;
+  background: rgba(0,0,0,.55);
+}
+
+:fullscreen .bottom-nav button,
+:fullscreen #page-info {
+  color: #fff;
+  opacity: .85;
 }
 </style>
 </head>
@@ -135,7 +147,6 @@ body {
   <button id="next"><i class="bi bi-chevron-right"></i></button>
 </div>
 
-<!-- Fullscreen Button -->
 <button class="fullscreen-btn" id="fsBtn">
   <i class="bi bi-arrows-fullscreen"></i>
 </button>
@@ -143,7 +154,7 @@ body {
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 
 <script>
-/* ===== Fix Mobile VH ===== */
+/* ===== Fix VH ===== */
 function setVH() {
   document.documentElement.style.setProperty(
     '--vh',
@@ -158,10 +169,7 @@ const pdfUrl = 'file/bitcoin.pdf';
 pdfjsLib.GlobalWorkerOptions.workerSrc =
   'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
-let pdfDoc = null;
-let pageNum = 1;
-let baseScale = 1;
-let zoomScale = 1;
+let pdfDoc, pageNum = 1, zoomScale = 1, baseScale = 1;
 
 const canvas = document.getElementById('pdf-canvas');
 const ctx = canvas.getContext('2d');
@@ -173,10 +181,14 @@ function renderPage(num) {
   pdfDoc.getPage(num).then(page => {
     const unscaled = page.getViewport({ scale: 1 });
     baseScale = viewer.clientWidth / unscaled.width;
-    const viewport = page.getViewport({ scale: baseScale * zoomScale });
+
+    const viewport = page.getViewport({
+      scale: baseScale * zoomScale
+    });
 
     canvas.width = viewport.width;
     canvas.height = viewport.height;
+
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     page.render({ canvasContext: ctx, viewport });
 
@@ -189,7 +201,7 @@ pdfjsLib.getDocument(pdfUrl).promise.then(pdf => {
   renderPage(pageNum);
 });
 
-/* ===== Nav ===== */
+/* ===== Navigation Buttons ===== */
 prev.onclick = () => {
   if (pageNum > 1) {
     zoomScale = 1;
@@ -205,6 +217,7 @@ next.onclick = () => {
 
 /* ===== Pinch Zoom ===== */
 let startDist = 0, tempScale = 1, isPinching = false;
+
 const getDist = e => Math.hypot(
   e.touches[0].clientX - e.touches[1].clientX,
   e.touches[0].clientY - e.touches[1].clientY
@@ -235,18 +248,52 @@ canvas.addEventListener('touchend', () => {
   }
 });
 
-/* ===== Fullscreen API ===== */
+/* ===== Swipe Change Page ===== */
+let touchStartX = 0;
+let touchEndX = 0;
+
+canvas.addEventListener('touchstart', e => {
+  if (e.touches.length === 1 && zoomScale === 1) {
+    touchStartX = e.touches[0].clientX;
+  }
+});
+
+canvas.addEventListener('touchend', e => {
+  if (zoomScale !== 1) return;
+
+  touchEndX = e.changedTouches[0].clientX;
+  const deltaX = touchEndX - touchStartX;
+
+  if (Math.abs(deltaX) > 80) {
+    if (deltaX < 0 && pageNum < pdfDoc.numPages) {
+      zoomScale = 1;
+      renderPage(++pageNum);
+    } else if (deltaX > 0 && pageNum > 1) {
+      zoomScale = 1;
+      renderPage(--pageNum);
+    }
+  }
+});
+
+/* ===== Fullscreen + Orientation ===== */
 const fsBtn = document.getElementById('fsBtn');
 
-fsBtn.onclick = () => {
+fsBtn.onclick = async () => {
   if (!document.fullscreenElement) {
-    viewer.requestFullscreen();
+    await viewer.requestFullscreen();
+    if (screen.orientation?.lock) {
+      try { await screen.orientation.lock('landscape'); } catch {}
+    }
   } else {
     document.exitFullscreen();
   }
 };
 
 document.addEventListener('fullscreenchange', () => {
+  if (!document.fullscreenElement && screen.orientation?.unlock) {
+    screen.orientation.unlock();
+  }
+
   fsBtn.innerHTML = document.fullscreenElement
     ? '<i class="bi bi-fullscreen-exit"></i>'
     : '<i class="bi bi-arrows-fullscreen"></i>';

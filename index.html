@@ -124,6 +124,24 @@ body {
   color: #fff;
   opacity: .85;
 }
+
+/* === ADDED: Exit Fullscreen Button === */
+.exit-fs-btn {
+  position: fixed;
+  top: .75rem;
+  right: .75rem;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0,0,0,.65);
+  color: #fff;
+  font-size: 1.1rem;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 1200;
+}
 </style>
 </head>
 
@@ -149,6 +167,11 @@ body {
 
 <button class="fullscreen-btn" id="fsBtn">
   <i class="bi bi-arrows-fullscreen"></i>
+</button>
+
+<!-- === ADDED: Exit Fullscreen Button === -->
+<button class="exit-fs-btn" id="exitFsBtn">
+  <i class="bi bi-x-lg"></i>
 </button>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -299,6 +322,15 @@ document.addEventListener('fullscreenchange', () => {
     : '<i class="bi bi-arrows-fullscreen"></i>';
 
   setTimeout(() => renderPage(pageNum), 300);
+});
+
+/* === ADDED: Exit Fullscreen Logic === */
+const exitFsBtn = document.getElementById('exitFsBtn');
+
+exitFsBtn.onclick = () => document.exitFullscreen();
+
+document.addEventListener('fullscreenchange', () => {
+  exitFsBtn.style.display = document.fullscreenElement ? 'flex' : 'none';
 });
 </script>
 
